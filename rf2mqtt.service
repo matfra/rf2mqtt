@@ -1,0 +1,11 @@
+[Unit]
+Description=Raspberry Pi 433 RF codes to MQTT
+After=network-online.target
+After=docker.service
+
+[Service]
+ExecStart=/usr/local/bin/rf2mqtt
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -6,6 +6,7 @@ import signal
 import sys
 import time
 import logging
+import math
 
 from rpi_rf import RFDevice
 
@@ -34,6 +35,20 @@ def mqtt_connect(host, port):
 def mqtt_send(client, topic, payload):
     client.publish(topic, payload=payload.encode('utf-8'), qos=0, retain=False)
 
+def check_if_allowed(code: int) -> bool:
+    ALLOWED_PREFIXES=[
+            68,
+            533, #etek5
+            552, #etek3_bed
+            557, #etek3_kitchen
+            1654,
+            1265,
+            526,
+            786,
+    ]
+#    return True
+    return int(math.floor(code/10000)) in ALLOWED_PREFIXES
+
 def main():
     parser = argparse.ArgumentParser(description='Receives a decimal code via a 433/315MHz GPIO device and send it to an MQTT broker')
     parser.add_argument('-g', dest='gpio', type=int, default=27,
@@ -46,6 +61,8 @@ def main():
             help="Topic to send the messages to (default: rc)")
     parser.add_argument('-r', dest='rate_limit', type=int, default=200,
             help="Rate limit in milliseconds to filter burst of codes sent by RF remotes (default: 200)")
+    parser.add_argument('-d', dest='dev', action='store_true',
+            help="Enable dev mode")
     parser.add_argument('-v', dest='verbose', action='store_true',
             help="More verbose logs")
     args = parser.parse_args()
@@ -86,6 +103,9 @@ def main():
             ))
             previous_code, previous_timestamp = previous_signal
             min_delta_t = args.rate_limit * 1000
+            if not check_if_allowed(code):
+                log.debug("Blocked code {}".format(code))
+                continue
             if code == previous_code:
                 delta_t = timestamp - previous_timestamp
                 if delta_t < min_delta_t:
